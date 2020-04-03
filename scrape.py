@@ -4,18 +4,35 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import show_corpus
 
 ############# CONFIGURATION #############
-cron = {'second': 0}
-base_path = 'corpora' 
-#########################################
 
+# cron is passed as kwargs to scheduler.add_job to set the timing of
+# writing CORPUS to disk at regular intervals.
+# See documentation for details at
+# https://apscheduler.readthedocs.io/en/stable/modules/triggers/cron.html
+cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
+# cron = {'minute': 0}   # every time minute == 0 (i.e., at the top of each hour)
+# cron = {'hour': 0}   # every time   hour == 0 (i.e., at the start of each day)
+
+# A downloaded subreddit will be stored at base_path/<subreddit name>.
+base_path = 'corpora'
+
+#############    GLOBALS    #############
 
 reddit = praw.Reddit(client_id='sq6GgQR_4lri7A',
                      client_secret='dWes213OfQWpF7eCVxeImaHSbiw',
                      user_agent='jack')
-
 CORPUS = None
 
+#############     CODE      #############
+
 def listen_subreddit(sub):
+    """
+    Listen to sub's comment stream forever, and add all incoming 
+    comments and the posts they are on to global CORPUS.
+
+    Params: sub (type praw.models.reddit.subreddit.Subreddit) 
+              is the subreddit to listen to. 
+    """
     global CORPUS
     while True:
         try:
@@ -25,16 +42,24 @@ def listen_subreddit(sub):
                     CORPUS = Corpus(utterances=utts)
                 else:
                     CORPUS = CORPUS.add_utterances(utts)
-  
         except prawcore.exceptions.RequestException as e:
             print(f'got error {e} from subreddit stream; restarting stream')
 
 
 def add_submission(submission):
+    """
+    Parse submission into an utterance.
+
+    Params: submission (type praw.models.reddit.submission.Submission) 
+
+    Returns: [utt] where utt is a convokit Utterance 
+               representing submission.
+    """
     meta = {'children': [],
             'depth': 0,
             'permalink': submission.permalink,
             'type': 'submission',
+            'subreddit': sys.argv[1],
             'title': submission.title}
     
     utt = Utterance(id=submission.id,
@@ -47,6 +72,17 @@ def add_submission(submission):
     return [utt]
     
 def add_comment(comment):
+    """
+    Parse comment into an utterance, in addition to comment's 
+    parents if they are not yet in CORPUS.
+
+    Params: comment (type praw.models.reddit.comment.Comment) 
+
+    Returns: [utt_1,utt_2,...,utt_n] where each utti is a convokit 
+               Utterance. utt_n coresponds to comment, utt_(n-1)
+               coresponds to comment's immediate parent ...
+               n >= 1. 
+    """
     global CORPUS
     pid = comment.parent_id.split('_')
 
@@ -70,6 +106,7 @@ def add_comment(comment):
     meta = {'children': [],
             'depth': parent.meta['depth'] + 1,
             'permalink': comment.permalink,
+            'subreddit': sys.argv[1],
             'type': 'comment'}
     
     utt = Utterance(id=comment.id,
@@ -84,6 +121,9 @@ def add_comment(comment):
     return utts
 
 def write_corpus():
+    """
+    Write CORPUS to disk at the location specified in global base_path.
+    """
     global CORPUS, base_path
     assert CORPUS is not None
     t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
