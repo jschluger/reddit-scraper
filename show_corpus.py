@@ -7,10 +7,10 @@ def show_corpus(corpus):
     for convo in corpus.iter_conversations():
         for utt in convo.traverse('dfs'):
             if utt.meta['type'] == 'comment':
-                text = f'(id={utt.id}) (reply_to={utt.reply_to})({utt.user.id}): \n{utt.text}' # ~ {utt.meta}'
+                text = f'{utt.user.id}: \n{utt.text}'
             else:
                 assert utt.meta['type'] == 'submission'
-                text = f'(id={utt.id}) (reply_to={utt.reply_to})({utt.user.id}): !{utt.meta["title"]}! \n{utt.text}'#  ~ {utt.meta}'
+                text = f'{utt.user.id}: !{utt.meta["title"]}! \n{utt.text}'
             indent(text, utt.meta['depth'])
             if utt.meta['depth'] == 0:
                 pid = utt.id
@@ -20,7 +20,7 @@ def show_corpus(corpus):
                 except AssertionError as e:
                     print(f'pid={pid} != utt.root={utt.root}')
                     raise e
-    print(f'done viewing corpus {corpus}')
+    print('--------------------------------------------------')
 
 def indent(text, n=0):
     print(textwrap.indent(textwrap.fill(text), '   ' * n + '| '))

@@ -5,7 +5,7 @@ import show_corpus
 
 ############# CONFIGURATION #############
 cron = {'second': 0}
-base_path = 'corpori' 
+base_path = 'corpora' 
 #########################################
 
 
