@@ -9,8 +9,8 @@ import show_corpus
 # writing CORPUS to disk at regular intervals.
 # See documentation for details at
 # https://apscheduler.readthedocs.io/en/stable/modules/triggers/cron.html
-cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
-# cron = {'minute': 0}   # every time minute == 0 (i.e., at the top of each hour)
+# cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
+cron = {'minute': 0}   # every time minute == 0 (i.e., at the top of each hour)
 # cron = {'hour': 0}   # every time   hour == 0 (i.e., at the start of each day)
 
 # A downloaded subreddit will be stored at base_path/<subreddit name>.
