@@ -14,4 +14,6 @@ dumping coronavirus corpus at time 2020-04-03 15:00:00; contains 2000 utterances
 ...
 $ python show_corpus.py coronavirus
 ```
+Replace `coronavirus` with the name of any subreddit you want to follow. To use this tool to follow multiple subreddits, use the tool on each subreddit individually and then merge the resulting corpora.
+
 ### See scrape.py for configuration options.
