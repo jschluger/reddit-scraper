@@ -1,4 +1,4 @@
-import praw, convokit, prawcore, sys, datetime, os
+import praw, convokit, prawcore, sys, datetime, os, requests
 from convokit import Utterance, Conversation, Corpus, User
 from apscheduler.schedulers.background import BackgroundScheduler
 import show_corpus
@@ -9,8 +9,8 @@ import show_corpus
 # writing CORPUS to disk at regular intervals.
 # See documentation for details at
 # https://apscheduler.readthedocs.io/en/stable/modules/triggers/cron.html
-# cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
-cron = {'minute': 0}   # every time minute == 0 (i.e., at the top of each hour)
+cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
+# cron = {'minute': 0}   # every time minute == 0 (i.e., at the top of each hour)
 # cron = {'hour': 0}   # every time   hour == 0 (i.e., at the start of each day)
 
 # A downloaded subreddit will be stored at base_path/<subreddit name>.
@@ -22,6 +22,7 @@ reddit = praw.Reddit(client_id='sq6GgQR_4lri7A',
                      client_secret='dWes213OfQWpF7eCVxeImaHSbiw',
                      user_agent='jack')
 CORPUS = None
+FOLLOWING = []
 
 #############     CODE      #############
 
@@ -37,16 +38,17 @@ def listen_subreddit(sub):
     while True:
         try:
             for comment in sub.stream.comments():
-                utts = add_comment(comment)
+                utts = comment_to_utts(comment)
                 if CORPUS == None:
                     CORPUS = Corpus(utterances=utts)
                 else:
                     CORPUS = CORPUS.add_utterances(utts)
+                    
         except prawcore.exceptions.RequestException as e:
             print(f'got error {e} from subreddit stream; restarting stream')
 
 
-def add_submission(submission):
+def submission_to_utt(submission):
     """
     Parse submission into an utterance.
 
@@ -60,8 +62,19 @@ def add_submission(submission):
             'permalink': submission.permalink,
             'type': 'submission',
             'subreddit': sys.argv[1],
-            'title': submission.title}
+            'title': submission.title,
+            'is_self': submission.is_self }
     
+    if not submission.is_self:
+        meta['link'] = submission.url
+
+        r = requests.get(submission.url)
+        meta['html'] = r.text
+
+    for dup in submission.duplicates():
+        # print(f'({submission.id}) {submission.title} also posted to {dup.subreddit.display_name} ({dup.id})')
+        follow(dup)
+        
     utt = Utterance(id=submission.id,
                     text=submission.selftext,
                     reply_to=None,
@@ -71,7 +84,7 @@ def add_submission(submission):
                     meta=meta)
     return [utt]
     
-def add_comment(comment):
+def comment_to_utts(comment):
     """
     Parse comment into an utterance, in addition to comment's 
     parents if they are not yet in CORPUS.
@@ -91,11 +104,11 @@ def add_comment(comment):
     if CORPUS == None or pid[1] not in CORPUS.utterances:
         if pid[0] == 't1':
             parent_comment = praw.models.Comment(reddit=reddit, id=pid[1])
-            utts = add_comment(parent_comment)
+            utts = comment_to_utts(parent_comment)
         else:
             assert pid[0] == 't3'
             submission = praw.models.Submission(reddit=reddit, id=pid[1])
-            utts = add_submission(submission)
+            utts = submission_to_utt(submission)
         assert utts[-1].id == pid[1]
 
     # get&update parent utterance
@@ -128,12 +141,42 @@ def write_corpus():
     assert CORPUS is not None
     t = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     l = len(list(CORPUS.iter_utterances()))
-    print(f'dumping {sys.argv[1]} corpus at time {t}; contains {l} utterances')
+    print(f'Dumping {sys.argv[1]} corpus at time {t}; contains {l} utterances.')
     CORPUS.dump(name=sys.argv[1],
                 base_path=base_path,
                 increment_version=False)
     
+def follow(submission):
+    """
+    Add submission to list of additional posts to track, which must 
+    be updated at regular intervals outside of the subreddit stream.
 
+    Params: submission (type praw.models.reddit.submission.Submission) 
+    """
+    global FOLLOWING
+    FOLLOWING.append(submission)
+    following_update_single(submission)
+
+
+def following_update_all():
+    """
+    Update CORPUS with new comments on all posts in FOLLOWING.
+    """
+    for followed in FOLLOWING:
+        following.update_single(followed)
+
+
+def following_update_single(submission):
+    """
+    Update CORPUS with new comments on submission.
+
+    Params: submission (type praw.models.reddit.submission.Submission) 
+    """
+    # ToDo
+    pass
+
+
+    
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print('Must specify subreddit name; e.g.:\n\t $ python scrape.py coronavirus')
@@ -152,9 +195,11 @@ if __name__ == '__main__':
 
         print(f'Scheduling corpus write to disk with cron {cron}')
         scheduler = BackgroundScheduler()
-        scheduler.add_job(func=write_corpus, trigger='cron', **cron)
+        scheduler.add_job(func=following_update_all, trigger='cron', **cron)
+        scheduler.add_job(func=write_corpus, trigger='cron', **cron) # ToDo: make these run on two seperate CRONS
         scheduler.start()
 
+        
         print(f'Listening to {sys.argv[1]} subreddit stream')
         sub = reddit.subreddit(sys.argv[1])
         listen_subreddit(sub)

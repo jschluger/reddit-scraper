@@ -12,11 +12,12 @@ def show_corpus(corpus):
     pid = None
     for convo in corpus.iter_conversations():
         for utt in convo.traverse('dfs'):
+            print(utt.meta['permalink'])
             if utt.meta['type'] == 'comment':
-                text = f'{utt.user.id}: \n{utt.text}'
+                text = f'{utt.user.id}: \n{utt.text} ({utt.meta["permalink"]})'
             else:
                 assert utt.meta['type'] == 'submission'
-                text = f'{utt.user.id}: !{utt.meta["title"]}! \n{utt.text}'
+                text = f'{utt.user.id}: !!{utt.meta["title"]}!! {utt.text} ({utt.meta["permalink"]})'
             indent(text, utt.meta['depth'], '(r/'+utt.meta['subreddit']+') ')
             if utt.meta['depth'] == 0:
                 pid = utt.id
