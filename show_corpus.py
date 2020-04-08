@@ -12,7 +12,7 @@ def show_corpus(corpus):
     pid = None
     for convo in corpus.iter_conversations():
         for utt in convo.traverse('dfs'):
-            print(utt.meta['permalink'])
+            # print(utt.meta['permalink'])
             if utt.meta['type'] == 'comment':
                 text = f'{utt.user.id}: \n{utt.text} ({utt.meta["permalink"]})'
             else:

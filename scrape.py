@@ -39,16 +39,13 @@ def listen_subreddit(sub):
         try:
             for comment in sub.stream.comments():
                 utts = comment_to_utts(comment)
-                if CORPUS == None:
-                    CORPUS = Corpus(utterances=utts)
-                else:
-                    CORPUS = CORPUS.add_utterances(utts)
-                    
+                safe_add_utterances(utts)
+                
         except prawcore.exceptions.RequestException as e:
             print(f'got error {e} from subreddit stream; restarting stream')
 
 
-def submission_to_utt(submission):
+def submission_to_utt(submission, check_dups=True):
     """
     Parse submission into an utterance.
 
@@ -61,19 +58,23 @@ def submission_to_utt(submission):
             'depth': 0,
             'permalink': submission.permalink,
             'type': 'submission',
-            'subreddit': sys.argv[1],
+            'subreddit': submission.subreddit.display_name,
             'title': submission.title,
             'is_self': submission.is_self }
     
     if not submission.is_self:
         meta['link'] = submission.url
 
-        r = requests.get(submission.url)
-        meta['html'] = r.text
-
-    for dup in submission.duplicates():
-        # print(f'({submission.id}) {submission.title} also posted to {dup.subreddit.display_name} ({dup.id})')
-        follow(dup)
+        try:
+            r = requests.get(submission.url)
+            meta['html'] = r.text
+        except Exception as e:
+            print(f'requesting {submission.url} caused error {e}')
+            meta['html'] = None
+                  
+    if check_dups:
+        for dup in submission.duplicates():
+            follow(dup)
         
     utt = Utterance(id=submission.id,
                     text=submission.selftext,
@@ -84,7 +85,7 @@ def submission_to_utt(submission):
                     meta=meta)
     return [utt]
     
-def comment_to_utts(comment):
+def comment_to_utts(comment, check_dups=True):
     """
     Parse comment into an utterance, in addition to comment's 
     parents if they are not yet in CORPUS.
@@ -100,15 +101,16 @@ def comment_to_utts(comment):
     pid = comment.parent_id.split('_')
 
     utts = []
+    
     # add the parent comment/post if not yet in CORPUS
     if CORPUS == None or pid[1] not in CORPUS.utterances:
         if pid[0] == 't1':
             parent_comment = praw.models.Comment(reddit=reddit, id=pid[1])
-            utts = comment_to_utts(parent_comment)
+            utts = comment_to_utts(parent_comment, check_dups=check_dups)
         else:
             assert pid[0] == 't3'
             submission = praw.models.Submission(reddit=reddit, id=pid[1])
-            utts = submission_to_utt(submission)
+            utts = submission_to_utt(submission, check_dups=check_dups)
         assert utts[-1].id == pid[1]
 
     # get&update parent utterance
@@ -119,7 +121,7 @@ def comment_to_utts(comment):
     meta = {'children': [],
             'depth': parent.meta['depth'] + 1,
             'permalink': comment.permalink,
-            'subreddit': sys.argv[1],
+            'subreddit': comment.subreddit.display_name,
             'type': 'comment'}
     
     utt = Utterance(id=comment.id,
@@ -154,27 +156,48 @@ def follow(submission):
     Params: submission (type praw.models.reddit.submission.Submission) 
     """
     global FOLLOWING
-    FOLLOWING.append(submission)
-    following_update_single(submission)
+    if submission not in FOLLOWING:
+        FOLLOWING.append(submission)
+        following_update_single(submission)
 
 
 def following_update_all():
     """
     Update CORPUS with new comments on all posts in FOLLOWING.
     """
+    print(f'running following_update_all; following {len(FOLLOWING)} posts')
     for followed in FOLLOWING:
-        following.update_single(followed)
+        following_update_single(followed)
 
 
 def following_update_single(submission):
     """
-    Update CORPUS with new comments on submission.
+    Update CORPUS by adding new utterances for any new comments 
+    on submission, in addition to an utterance for submission if 
+    necessary (it has not yet been added).
 
     Params: submission (type praw.models.reddit.submission.Submission) 
     """
-    # ToDo
-    pass
+    global CORPUS
+    submission.comment_sort = 'new'
+    submission.comments.replace_more(limit=0)
+    comments = submission.comments.list()
+    for comment in comments:
+        if CORPUS is None or not CORPUS.has_utterance(comment.id):
+            utts = comment_to_utts(comment, check_dups=False)
+            safe_add_utterances(utts)
 
+            
+def safe_add_utterances(utts):
+    """
+    Safely add a list of utterances utts to CORPUS, handeling the 
+    case where CORPUS is None.
+    """
+    global CORPUS
+    if CORPUS is None:
+        CORPUS = Corpus(utterances=utts)
+    else:
+        CORPUS = CORPUS.add_utterances(utts)
 
     
 if __name__ == '__main__':
