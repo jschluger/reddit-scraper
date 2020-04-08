@@ -31,12 +31,12 @@ If `utt` is an convokit Utterance representing praw Submission `submission`, the
 - 
 ```
 utt.meta = {'children': <list of ids of top level comments on submission>,
-  	         'depth': 0,	     
-		 'permalink': submission.permalink,
-            	 'type': 'submission',
-            	 'subreddit': submission.subreddit.display_name,
-            	 'title': submission.title,
-            	 'is_self': submission.is_self } 
+  	    'depth': 0,	     
+	    'permalink': submission.permalink,
+            'type': 'submission',
+            'subreddit': submission.subreddit.display_name,
+            'title': submission.title,
+            'is_self': submission.is_self } 
 ```
 - Additionally, if `submission.is_self==False` (i.e., submission is a link), then `meta['link'] = submission.url` and `meta['html']` is the response from a get request to `submission.url`, or None if that request fails.
 
@@ -50,7 +50,7 @@ If `utt` is a convokit Utterance representing praw Comment `comment`, then:
 - 
 ```
 utt.meta = {'children': <list of ids of comments directly replying to comment>,
-    	         'depth': <comment's depth in the comment forrest>,	     
-		 'permalink': comment.permalink,
-            	 'type': 'comment',
-            	 'subreddit': comment.subreddit.display_name}
+    	    'depth': <comment's depth in the comment forrest>,	     
+	    'permalink': comment.permalink,
+            'type': 'comment',
+            'subreddit': comment.subreddit.display_name }
