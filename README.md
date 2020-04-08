@@ -19,7 +19,7 @@ Replace `coronavirus` with the name of any subreddit you want to follow. To use 
 ### See scrape.py for configuration options.
 
 ## Data Format
-This tool generates a convokit corpus, with a convokit utterance for each reddit submission and comment the tool encounters. It may be helpful to consult the Praw documentation for (Submission)[https://praw.readthedocs.io/en/latest/code_overview/models/submission.html] and (Comment)[https://praw.readthedocs.io/en/latest/code_overview/models/comment.html] for uttmost clarity.
+This tool generates a convokit corpus, with a convokit utterance for each reddit submission and comment the tool encounters. It may be helpful to consult the Praw documentation for [Submission](https://praw.readthedocs.io/en/latest/code_overview/models/submission.html) and [Comment](https://praw.readthedocs.io/en/latest/code_overview/models/comment.html]) for uttmost clarity.
 
 If `utt` is an convokit Utterance representing praw Submission `submission`, then:
 - `utt.id = submission.id`
