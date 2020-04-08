@@ -28,13 +28,16 @@ If `utt` is an convokit Utterance representing praw Submission `submission`, the
 - `utt.root = submission.id`
 - `utt.author = submission.author.name`
 - `utt.timestamp = submission.created_utc`
-- ```utt.meta = {'children': <list of ids of top level comments on submission>,
+- 
+```
+utt.meta = {'children': <list of ids of top level comments on submission>,
   	         'depth': 0,	     
 		 'permalink': submission.permalink,
             	 'type': 'submission',
             	 'subreddit': submission.subreddit.display_name,
             	 'title': submission.title,
-            	 'is_self': submission.is_self } ```
+            	 'is_self': submission.is_self } 
+```
 - Additionally, if `submission.is_self==False` (i.e., submission is a link), then `meta['link'] = submission.url` and `meta['html']` is the response from a get request to `submission.url`, or None if that request fails.
 
 If `utt` is a convokit Utterance representing praw Comment `comment`, then:
@@ -44,7 +47,9 @@ If `utt` is a convokit Utterance representing praw Comment `comment`, then:
 - `utt.root = <id of the submission comment is a comment on>`
 - `utt.author = comment.author.name`
 - `utt.timestamp = comment.created_utc`
-- ```utt.meta = {'children': <list of ids of comments directly replying to comment>,
+- 
+```
+utt.meta = {'children': <list of ids of comments directly replying to comment>,
     	         'depth': <comment's depth in the comment forrest>,	     
 		 'permalink': comment.permalink,
             	 'type': 'comment',
