@@ -5,24 +5,33 @@ import show_corpus
 
 ############# CONFIGURATION #############
 
-# cron is passed as kwargs to scheduler.add_job to set the timing of
+# write_cron is passed as kwargs to scheduler.add_job to set the timing of
 # writing CORPUS to disk at regular intervals.
 # See documentation for details at
 # https://apscheduler.readthedocs.io/en/stable/modules/triggers/cron.html
-cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
-# cron = {'minute': 0}   # every time minute == 0 (i.e., at the top of each hour)
-# cron = {'hour': 0}   # every time   hour == 0 (i.e., at the start of each day)
+write_cron = {'second': 0} # every time second == 0 (i.e., at the top of each minute)
+
+# follow_cron sets timeing of checking posts in FOLLOWING list for new content
+follow_cron = {'minute': '*/2'} # every time number of minutes is divisible by 2
+
+# {'minute': 0} is every time minute == 0 (i.e., at the top of each hour)
+# {'hour': 0}   is every time   hour == 0 (i.e., at the start of each day)
 
 # A downloaded subreddit will be stored at base_path/<subreddit name>.
 base_path = 'corpora'
 
 #############    GLOBALS    #############
 
+CORPUS = None
+FOLLOWING = []
+
+#############   CONSTANTS   #############
+
 reddit = praw.Reddit(client_id='sq6GgQR_4lri7A',
                      client_secret='dWes213OfQWpF7eCVxeImaHSbiw',
                      user_agent='jack')
-CORPUS = None
-FOLLOWING = []
+
+SKIP_FIELDS = {'utterance': ['html']}
 
 #############     CODE      #############
 
@@ -146,7 +155,9 @@ def write_corpus():
     print(f'Dumping {sys.argv[1]} corpus at time {t}; contains {l} utterances.')
     CORPUS.dump(name=sys.argv[1],
                 base_path=base_path,
-                increment_version=False)
+                increment_version=False,
+                fields_to_skip=SKIP_FIELDS)
+    CORPUS.dump_info('utterance', SKIP_FIELDS['utterance'], dir_name=os.path.join(base_path, sys.argv[1]))
     
 def follow(submission):
     """
@@ -216,10 +227,10 @@ if __name__ == '__main__':
         else:
             print(f'No corpus exists at {full_path}; building new corpus from scratch')
 
-        print(f'Scheduling corpus write to disk with cron {cron}')
+        print(f'Scheduling corpus write to disk with cron {write_cron} and check FOLLOWING with cron {follow_cron}')
         scheduler = BackgroundScheduler()
-        scheduler.add_job(func=following_update_all, trigger='cron', **cron)
-        scheduler.add_job(func=write_corpus, trigger='cron', **cron) # ToDo: make these run on two seperate CRONS
+        scheduler.add_job(func=following_update_all, trigger='cron', **follow_cron)
+        scheduler.add_job(func=write_corpus, trigger='cron', **write_cron) 
         scheduler.start()
 
         

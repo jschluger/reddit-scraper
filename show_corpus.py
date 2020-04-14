@@ -50,4 +50,6 @@ if __name__ == '__main__':
             print(f'Found corpus at path {full_path}')
             
         corpus = Corpus(filename=full_path)
+        if False:
+            corpus.load_info('utterance', scrape.SKIP_FIELDS['utterance'], full_path)
         show_corpus(corpus)
