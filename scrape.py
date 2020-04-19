@@ -1,7 +1,6 @@
 import praw, convokit, prawcore, sys, datetime, os, requests
 from convokit import Utterance, Conversation, Corpus, User
 from apscheduler.schedulers.background import BackgroundScheduler
-import show_corpus
 
 ############# CONFIGURATION #############
 
@@ -50,7 +49,7 @@ def listen_subreddit(sub):
                 utts = comment_to_utts(comment)
                 safe_add_utterances(utts)
                 
-        except prawcore.exceptions.RequestException as e:
+        except prawcore.exceptions.PrawcoreException as e:
             print(f'got error {e} from subreddit stream; restarting stream')
 
 
